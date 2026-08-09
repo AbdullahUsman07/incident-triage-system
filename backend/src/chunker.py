@@ -20,7 +20,11 @@ class LogAwareChunker:
     def parse_metadata_and_body(self, content: str, source_name: str)-> Tuple[Dict, List]:
         """Unified parser: handles YAML frontmatter (13 files) AND standard Markdown headers (7 custom files)."""
         metadata = {}
-        body_text = content.strip()
+        body_text = content.strip() if content else ""
+
+        # Handle empty files safely
+        if not body_text:
+            return {"title": os.path.splitext(source_name)[0], "company": "Unknown"}
 
         # Step 1: Check for YAML Frontmatter (For the 13 downloaded repo files)
         fm_match = re.match(r'^---\s*\n(.*?)\n---\s*\n(.*)$', content, re.DOTALL)
@@ -37,27 +41,31 @@ class LogAwareChunker:
                         if val:
                             metadata[key] = val
 
-            # Step 2: If no title from frontmatter, check for # Header (For our custom files)
-            if "title" not in metadata or not metadata["title"]:
-                header_match = re.search(r'^#\s+(.+)$', body_text, re.MULTILINE)
-                if header_match:
-                    metadata["title"] = header_match.group(1).strip()
+        # Step 2: If no title from frontmatter, check for # Header (For our custom files)
+        if "title" not in metadata or not metadata["title"]:
+            header_match = re.search(r'^#\s+(.+)$', body_text, re.MULTILINE)
+            if header_match:
+                metadata["title"] = header_match.group(1).strip()
 
             # Step 3: Final Fallback to summary or cleaned filename
-            if "title" not in metadata or not metadata["title"]:
-                if "summary" in metadata and metadata["summary"]:
-                    metadata["title"] = metadata["summary"][:80] + "..."
-                else:
-                    clean_name = os.path.splitext(source_name)[0]
-                    metadata["title"] = re.sub(r'[_\-]+', ' ', clean_name).title()
+        if "title" not in metadata or not metadata["title"]:
+            if "summary" in metadata and metadata["summary"]:
+                metadata["title"] = metadata["summary"][:80] + "..."
+            else:
+                clean_name = os.path.splitext(source_name)[0]
+                metadata["title"] = re.sub(r'[_\-]+', ' ', clean_name).title()
 
-            metadata["company"] = metadata.get("company", "Infrastructure")
+        metadata["company"] = metadata.get("company", "Infrastructure")
         
-            return metadata, body_text
+        return metadata, body_text
 
     def chunk_post_mortem(self, content: str, source_name: str) -> List[Dict]:
         """Parses document structure, extracts metadata, and chunks body text recursively"""
         metadata, body_text = self.parse_metadata_and_body(content, source_name)
+
+        if not body_text.strip():
+            return []
+        
 
         #split body text recursively into clean context chunks
         raw_chunks = self.text_splitter.split_text(body_text)
@@ -82,6 +90,9 @@ class LogAwareChunker:
 
     def chunk_raw_log(self, content: str, source_name: str) -> List[Dict]:
         """Groups raw logs while keeping stack traces attached to parent entries."""
+        if not content or not content.strip():
+            return []
+        
         log_boundary_pattern = r'\n(?=\d{4}-\d{2}-\d{2}|\b[A-Z][a-z]{2}\s+\d+|\bTraceback\b|\bException in thread\b)'
         log_entries = re.split(log_boundary_pattern, content)
         
