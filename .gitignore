@@ -1,5 +1,12 @@
 
 roadmap.docx
 backend/.env
+backend/__pycache__
+backend/src/__pycache__
+backend/replace.py
+
 
 .venv/
+
+
+command to run the main.py (uvicorn main:app --reload --port 8000)

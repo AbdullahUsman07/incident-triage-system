@@ -7,8 +7,8 @@ from dotenv import load_dotenv
 from pydantic import BaseModel, Field
 from groq import Groq
 
-from retriever import IncidentRetriever
-from tools import TOOLS_SCHEMA, execute_tool_call
+from src.retriever import IncidentRetriever
+from src.tools import TOOLS_SCHEMA, execute_tool_call
 
 env_path = Path(__file__).resolve().parent.parent / '.env'
 load_dotenv(dotenv_path=env_path)
